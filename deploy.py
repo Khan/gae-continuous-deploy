@@ -4,12 +4,17 @@
 a changeset is pushed to the website stable repository.
 """
 
+# TODO(david): Integrate with Jenkins
+# TODO(david): Proper logging with timestamps.
+
 import os
 import shutil
 import subprocess
 import time
 
+import hipchat.config
 import hipchat.room
+import pexpect
 
 import secrets
 
@@ -29,16 +34,16 @@ def check_incoming():
 
 def decrypt_secrets():
     print "Decrypting secrets"
-
-    # TODO(david): Figure out why `make decrypt_secrets` then passing password
-    #     thru stdin (proc.communicate()) doesn't work
-    subprocess.check_call([
-        "openssl", "cast5-cbc", "-d",
-        "-in", "secrets.py.cast5",
-        "-out", "secrets.py",
-        "-pass", "pass:%s" % secrets.secrets_decrypt_key,
-    ], cwd=REPO_DIR)
-    subprocess.check_call(["chmod", "600", "secrets.py"], cwd=REPO_DIR)
+    # Using pexpect because openssl directly connects to the tty instead of
+    # stdin/out
+    child = pexpect.spawn('make secrets_decrypt', cwd=REPO_DIR)
+    child.expect('enter .* password:')
+    child.sendline(secrets.secrets_decrypt_key)
+    child.expect(pexpect.EOF)
+    child.close()
+    if child.exitstatus != 0:
+        print "Unable to decrypt secrets. Bailing."
+        exit(1)
 
 
 def clone_repo():
@@ -78,6 +83,8 @@ def deploy_to_staging():
     update_repo()
     decrypt_secrets()
     shutil.copy2("secrets_dev.py", REPO_DIR)
+    subprocess.check_call(["pip", "install", "-r", "requirements.txt"],
+            cwd=REPO_DIR)
 
     print "Deploying!"
 
