@@ -120,8 +120,8 @@ def deploy_to_staging(notify=True):
             # TODO(david): Give more info in hipchat message, like ping
             #     changeset authors
             notify_hipchat(secrets.hipchat_room_id, "red",
-                    "(poo), deploy to staging failed (sadpanda). Please see "
-                    "ci.khanacademy.org:~/deploy.log for more info.")
+                    "Oh (poo), I'm borked (sadpanda). Will a kind soul ssh "
+                    "into ci.khanacademy.org and make me feel better? (heart)")
 
         # Exit for now so we don't spam the 1s and 0s room
         print "Quitting. Please restart this script once issue has been fixed."
