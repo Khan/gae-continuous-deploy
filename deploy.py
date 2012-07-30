@@ -7,6 +7,7 @@ a changeset is pushed to the website stable repository.
 # TODO(david): Integrate with Jenkins
 # TODO(david): Proper logging with timestamps.
 
+import optparse
 import os
 import shutil
 import subprocess
@@ -116,10 +117,24 @@ def deploy_to_staging():
         exit(1)
 
 
+def get_cmd_line_args():
+    parser = optparse.OptionParser()
+    parser.add_option('-d', '--deploy_and_quit',
+        action="store_true",
+        help="Deploy to staging then exit (do not daemonize).", default=False)
+    return parser.parse_args()
+
+
 # TODO(david): Ask a Kiln admin to add a webhook on stable instead of polling
 def main():
+    options, _ = get_cmd_line_args()
+
     if not os.path.exists(REPO_DIR):
         clone_repo()
+
+    if options.deploy_and_quit:
+        deploy_to_staging()
+        return 0
 
     # Poll to see if there are any new changesets
     while True:
@@ -130,4 +145,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    exit(main())
