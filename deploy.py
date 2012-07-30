@@ -68,13 +68,18 @@ def update_repo():
         clone_repo()
 
 
-def notify_hipchat(room_id, message):
+def get_last_changeset():
+    return subprocess.check_output(["hg", "tip", "--template", "{node|short}"],
+            cwd=REPO_DIR)
+
+
+def notify_hipchat(room_id, color, message):
     # Pure kwargs don't work here because 'from' is a Python keyword...
     hipchat.room.Room.message(**{
         'room_id': room_id,
         'from': 'Mr Deploy',
         'message': message,
-        'color': 'red',
+        'color': color,
         'message_format': 'text',
     })
 
@@ -89,6 +94,8 @@ def deploy_to_staging(notify=True):
 
     try:
 
+        last_changeset = get_last_changeset()
+
         subprocess.check_call([
             "python", "deploy/deploy.py",
             "--version", "staging",
@@ -99,18 +106,22 @@ def deploy_to_staging(notify=True):
 
         print "Deploy succeeded!"
 
+        if notify:
+            notify_hipchat(secrets.hipchat_room_id, "gray", "/me just "
+                    "deployed to http://staging.khan-academy.appspot.com with "
+                    "last website changeset %s " % last_changeset)
+
     except subprocess.CalledProcessError as e:
 
         print "Deploy failed :("
         print "ERROR: %s" % e
 
         if notify:
-
-            # TODO(david): Give more info in hipchat message
-            notify_hipchat(secrets.hipchat_room_id,
-                    "(poo), automated staging deploy failed. "
-                    "@david, could you check the logs on ci.khanacademy.org? "
-                    "Thanks. :)")
+            # TODO(david): Give more info in hipchat message, like ping
+            #     changeset authors
+            notify_hipchat(secrets.hipchat_room_id, "red",
+                    "(poo), deploy to staging failed (sadpanda). Please see "
+                    "ci.khanacademy.org:~/deploy.log for more info.")
 
         # Exit for now so we don't spam the 1s and 0s room
         print "Quitting. Please restart this script once issue has been fixed."
