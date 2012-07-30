@@ -1,5 +1,4 @@
 mercurial==2.2.3
-pexpect==2.4
 
 # Required by python-hipchat
 configobj

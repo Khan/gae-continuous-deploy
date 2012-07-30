@@ -14,7 +14,6 @@ import time
 
 import hipchat.config
 import hipchat.room
-import pexpect
 
 import secrets
 
@@ -34,16 +33,16 @@ def check_incoming():
 
 def decrypt_secrets():
     print "Decrypting secrets"
-    # Using pexpect because openssl directly connects to the tty instead of
-    # stdin/out
-    child = pexpect.spawn('make secrets_decrypt', cwd=REPO_DIR)
-    child.expect('enter .* password:')
-    child.sendline(secrets.secrets_decrypt_key)
-    child.expect(pexpect.EOF)
-    child.close()
-    if child.exitstatus != 0:
-        print "Unable to decrypt secrets. Bailing."
-        exit(1)
+
+    # Not running "make decrypt_secrets" because openssl gets input directly
+    # from tty instead of stdin.
+    subprocess.check_call([
+        "openssl", "cast5-cbc", "-d",
+        "-in", "secrets.py.cast5",
+        "-out", "secrets.py",
+        "-pass", "pass:%s" % secrets.secrets_decrypt_key,
+    ], cwd=REPO_DIR)
+    subprocess.check_call(["chmod", "600", "secrets.py"], cwd=REPO_DIR)
 
 
 def clone_repo():
