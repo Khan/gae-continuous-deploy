@@ -1,0 +1,4 @@
+secrets.py
+secrets_dev.py
+*.py[co]
+/stable

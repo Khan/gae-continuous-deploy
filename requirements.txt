@@ -1,0 +1,4 @@
+mercurial==2.2.3
+
+# Required by python-hipchat
+configobj

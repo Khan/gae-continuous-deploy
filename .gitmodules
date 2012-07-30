@@ -1,0 +1,3 @@
+[submodule "third_party/python-hipchat-src"]
+	path = third_party/python-hipchat-src
+	url = https://github.com/tagged/python-hipchat.git
