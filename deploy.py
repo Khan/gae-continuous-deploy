@@ -4,7 +4,7 @@
 a changeset is pushed to the website stable repository.
 """
 
-# TODO(david): Integrate with Jenkins
+# TODO(david): Integrate with Jenkins: only deploy when all tests pass
 # TODO(david): Proper logging with timestamps.
 
 import optparse
@@ -93,8 +93,6 @@ def deploy_to_staging(notify=True):
             "python", "deploy/deploy.py",
             "--version", "staging",
             "--no-up",
-            # TODO(david): Notify on test fails or restore/integrate w/ Jenkins
-            "--no-tests",
             "--no-hipchat",
             "--no-browser",
         ], cwd=REPO_DIR)
