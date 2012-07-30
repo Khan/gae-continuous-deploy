@@ -79,7 +79,7 @@ def notify_hipchat(room_id, message):
     })
 
 
-def deploy_to_staging():
+def deploy_to_staging(notify=True):
     update_repo()
     decrypt_secrets()
     shutil.copy2("secrets_dev.py", REPO_DIR)
@@ -106,11 +106,13 @@ def deploy_to_staging():
         print "Deploy failed :("
         print "ERROR: %s" % e
 
-        # TODO(david): Give more info in hipchat message
-        notify_hipchat(secrets.hipchat_room_id,
-                "(poo), automated staging deploy failed. "
-                "@david, could you check the logs on ci.khanacademy.org? "
-                "Thanks. :)")
+        if notify:
+
+            # TODO(david): Give more info in hipchat message
+            notify_hipchat(secrets.hipchat_room_id,
+                    "(poo), automated staging deploy failed. "
+                    "@david, could you check the logs on ci.khanacademy.org? "
+                    "Thanks. :)")
 
         # Exit for now so we don't spam the 1s and 0s room
         print "Quitting. Please restart this script once issue has been fixed."
@@ -122,6 +124,9 @@ def get_cmd_line_args():
     parser.add_option('-d', '--deploy_and_quit',
         action="store_true",
         help="Deploy to staging then exit (do not daemonize).", default=False)
+    parser.add_option('-n', '--no_notify',
+        action="store_true",
+        help="Don't notify HipChat.", default=False)
     return parser.parse_args()
 
 
@@ -133,13 +138,13 @@ def main():
         clone_repo()
 
     if options.deploy_and_quit:
-        deploy_to_staging()
+        deploy_to_staging(not options.no_notify)
         return 0
 
     # Poll to see if there are any new changesets
     while True:
         if check_incoming():
-            deploy_to_staging()
+            deploy_to_staging(not options.no_notify)
 
         time.sleep(POLL_INVERVAL_SECS)
 
