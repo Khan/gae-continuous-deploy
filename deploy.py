@@ -82,7 +82,7 @@ def deploy_to_staging():
     update_repo()
     decrypt_secrets()
     shutil.copy2("secrets_dev.py", REPO_DIR)
-    subprocess.check_call(["make", "install_deps"], cwd=REPO_DIR)
+    subprocess.check_call(["sudo", "make", "install_deps"], cwd=REPO_DIR)
 
     print "Deploying!"
 
