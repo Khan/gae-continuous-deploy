@@ -32,6 +32,28 @@ def check_incoming():
     return subprocess.call(["hg", "incoming"], cwd=REPO_DIR) == 0
 
 
+def get_earliest_incoming():
+    """Get the earliest incoming changeset hash. Will raise
+    subprocess.CalledProcessError if there are no incoming changesets.
+
+    Rant: This function would not be needed and we could just re-use
+    get_last_changeset() if hg supported inclusive/exclusive ranges (which
+    would also allow us to conveniently express the empty range)
+    """
+    output = subprocess.check_output([
+        "hg", "incoming",
+        "-l", "1",
+        "--template", "{node}",
+    ], cwd=REPO_DIR)
+
+    lines = output.split("\n")
+    if len(lines) >= 3 and "searching for changes" in lines[1]:
+        return lines[2]
+    else:
+        raise Exception("Oh crap, getting earliest incoming changeset failed. "
+                "Command output: %s" % output)
+
+
 def decrypt_secrets():
     print "Decrypting secrets"
 
@@ -82,6 +104,18 @@ def get_last_author():
     ], cwd=REPO_DIR)
 
 
+def get_affected_files(first_changeset, last_changeset='tip'):
+    """Get all changed, added, or deleted files between two given changesets,
+    inclusive.
+    """
+    files = subprocess.check_output([
+        "hg", "log",
+        "--rev", "%s:%s" % (first_changeset, last_changeset),
+        "--template", "{files} ",
+    ], cwd=REPO_DIR)
+    return set(files.split())
+
+
 def notify_hipchat(room_id, color, message):
     # Pure kwargs don't work here because 'from' is a Python keyword...
     hipchat.room.Room.message(**{
@@ -93,10 +127,43 @@ def notify_hipchat(room_id, color, message):
     })
 
 
+def notify_abort(room_id):
+    notify_hipchat(room_id, "gray", "/me is taking a "
+            "nap until the devs sort things out. (zzz)")
+
+
+def check_dangerous_files(first_changeset, last_changeset='tip', notify=True):
+    dangerous_files = {"cron.yaml", "queue.yaml", "index.yaml"}
+    affected_files = get_affected_files(first_changeset, last_changeset)
+    dangerous_changes = dangerous_files & affected_files
+
+    if dangerous_changes:
+        changes_str = ", ".join(dangerous_changes)
+        print("Bailing because of potentially dangerous changes to "
+                "cross-version files %s" % changes_str)
+
+        if notify:
+            notify_hipchat(secrets.hipchat_room_id, "red", "(boom) Sorry "
+                    "y'all, but I'm cowardly refusing to deploy because of "
+                    "potentially dangerous cross-version changes to %s. Call "
+                    "me back when the coast is clear!" % changes_str)
+            notify_abort(secrets.hipchat_room_id)
+        return True
+
+    return False
+
+
 def deploy_to_staging(notify=True):
-    update_repo()
+    if check_incoming():
+        first_changeset = get_earliest_incoming()
+        update_repo()
+
+        if check_dangerous_files(first_changeset, notify=notify):
+            exit(1)
+
     decrypt_secrets()
     shutil.copy2("secrets_dev.py", REPO_DIR)
+    # TODO(david): sudo needed because not using virtualenv on EC2. Fix that.
     subprocess.check_call(["sudo", "make", "install_deps"], cwd=REPO_DIR)
 
     print "Deploying!"
@@ -133,6 +200,7 @@ def deploy_to_staging(notify=True):
             notify_hipchat(secrets.hipchat_room_id, "red",
                     "Oh (poo), I'm borked (sadpanda). Will a kind soul ssh "
                     "into ci.khanacademy.org and make me feel better? (heart)")
+            notify_abort(secrets.hipchat_room_id)
 
         # Exit for now so we don't spam the 1s and 0s room
         print "Quitting. Please restart this script once issue has been fixed."
@@ -141,12 +209,15 @@ def deploy_to_staging(notify=True):
 
 def get_cmd_line_args():
     parser = optparse.OptionParser()
+
     parser.add_option('-d', '--deploy_and_quit',
         action="store_true",
         help="Deploy to staging then exit (do not daemonize).", default=False)
+
     parser.add_option('-n', '--no_notify',
         action="store_true",
         help="Don't notify HipChat.", default=False)
+
     return parser.parse_args()
 
 
