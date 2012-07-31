@@ -73,6 +73,15 @@ def get_last_changeset():
             cwd=REPO_DIR)
 
 
+def get_last_author():
+    # Not notifying authors for now because it may be annoying. If people
+    # request for @mentions, will add that then.
+    return subprocess.check_output([
+        "hg", "tip",
+        "--template", "{author|person}",
+    ], cwd=REPO_DIR)
+
+
 def notify_hipchat(room_id, color, message):
     # Pure kwargs don't work here because 'from' is a Python keyword...
     hipchat.room.Room.message(**{
@@ -95,6 +104,7 @@ def deploy_to_staging(notify=True):
     try:
 
         last_changeset = get_last_changeset()
+        last_author = get_last_author()
 
         subprocess.check_call([
             "python", "deploy/deploy.py",
@@ -109,7 +119,8 @@ def deploy_to_staging(notify=True):
         if notify:
             notify_hipchat(secrets.hipchat_room_id, "gray", "/me just "
                     "deployed to http://staging.khan-academy.appspot.com with "
-                    "last website changeset %s " % last_changeset)
+                    "last website changeset %s by %s" % (
+                        last_changeset, last_author))
 
     except subprocess.CalledProcessError as e:
 
