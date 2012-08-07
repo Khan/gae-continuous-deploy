@@ -59,12 +59,17 @@ def decrypt_secrets():
 
     # Not running "make decrypt_secrets" because openssl gets input directly
     # from tty instead of stdin.
-    subprocess.check_call([
+    p = subprocess.Popen([
         "openssl", "cast5-cbc", "-d",
         "-in", "secrets.py.cast5",
         "-out", "secrets.py",
-        "-pass", "pass:%s" % secrets.secrets_decrypt_key,
-    ], cwd=REPO_DIR)
+        "-pass", "stdin",
+    ], cwd=REPO_DIR, stdin=subprocess.PIPE)
+
+    p.communicate(secrets.secrets_decrypt_key)
+    if p.returncode != 0:
+        raise Exception("openssl exited with return code %d" % p.returncode)
+
     subprocess.check_call(["chmod", "600", "secrets.py"], cwd=REPO_DIR)
 
 
