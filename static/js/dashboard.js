@@ -1,7 +1,5 @@
 $(function() {
 
-var POLL_STATUS_INTERVAL_MS = 3000;
-
 $.fn.toggleDisabled = function(disable) {
     return this.each(function() {
         var $this = $(this);
@@ -15,56 +13,55 @@ $.fn.toggleDisabled = function(disable) {
 
 /**
  * Sets Mr Deploy's status.
- * @param {boolean} working Whether Mr Deploy is working.
+ * @param {boolean} running Whether Mr Deploy is running.
  */
-var setStatus = function(working) {
-    var status = working ? "I&rsquo;m working!" :
+var setStatus = function(running) {
+    var status = running ? "I&rsquo;m working!" :
             "I&rsquo;m napping... zed zed zed...";
 
     $("#status")
-        .toggleClass("alert-success", working)
-        .toggleClass("alert-error", !working)
+        .toggleClass("alert-success", running)
+        .toggleClass("alert-error", !running)
         .find(".status-msg")
             .html(status)
     ;
 
     $("#buttons")
-        .find("[data-action='start']").toggleDisabled(working).end()
-        .find("[data-action='stop']").toggleDisabled(!working).end()
-        .find("[data-action='restart']").toggleDisabled(!working).end()
+        .find("[data-action='start']").toggleDisabled(running).end()
+        .find("[data-action='stop']").toggleDisabled(!running).end()
+        .find("[data-action='restart']").toggleDisabled(!running).end()
     ;
-};
-
-var setStatusFromData = function(data) {
-    setStatus(data.running);
 };
 
 // TODO(david): Send status updates with the server-sent events stream
 var pollStatus = function() {
-    $.getJSON("/deploy/status", setStatusFromData);
+    $.getJSON("/deploy/status", function(data) {
+        setStatus(data.running);
+    });
     // TODO(david): Handle server error response
 };
 
 
-function setupStream() {
+var setupStream = function() {
     // IE does not support Server-Sent Events, but there exist polyfills if for
     // some unfathomable reason we want to support IE (Bill Gates comes again?)
     var source = new EventSource('/deploy/stream');
-    source.onmessage = function(e) {
+    source.addEventListener('mr_deploy_output', function(event) {
         $("#console-text")
-            .append(e.data + "\n")
+            .append(event.data + "\n")
             .scrollTop($("#console-text")[0].scrollHeight);
-    };
-}
+    });
+    source.addEventListener('mr_deploy_status', function(event) {
+        setStatus(JSON.parse(event.data));
+    });
+};
 
 var init = function() {
     $("#buttons").on("click", ".btn", function(event) {
         $("#buttons .btn").toggleDisabled(true);
 
         var action = $(event.currentTarget).data("action");
-        // TODO(david): Make the server wait for status to be updated, so we can
-        //     use the data we get back from the POST instead of another request
-        $.post("/deploy/please/" + action, pollStatus);
+        $.post("/deploy/please/" + action);
     });
 
     // TODO(david): On resize as well
@@ -73,7 +70,6 @@ var init = function() {
         .scrollTop($("#console-text")[0].scrollHeight);
 
     pollStatus();
-    setInterval(pollStatus, POLL_STATUS_INTERVAL_MS);
     setupStream();
 };
 

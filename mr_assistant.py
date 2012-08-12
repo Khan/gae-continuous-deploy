@@ -4,6 +4,7 @@
 messages via Redis Pub/Sub.
 """
 
+import json
 import subprocess
 import threading
 import time
@@ -19,12 +20,18 @@ class MrDeploy(object):
     Asks Redis for commands and streams deploy output to Redis Pub/Sub.
     """
 
-    def __init__(self, publish_channel):
+    def __init__(self, output_channel, status_channel):
         self.proc = None
-        self.publish_channel = publish_channel
+        self.output_channel = output_channel
+        self.status_channel = status_channel
 
     def is_running(self):
         return self.proc and self.proc.poll() is None
+
+    def _set_running(self, status):
+        json_status = json.dumps(status)
+        red.set('mr_deploy_running', json_status)
+        red.publish(self.status_channel, json_status)
 
     def start(self):
         if self.is_running():
@@ -39,7 +46,7 @@ class MrDeploy(object):
             bufsize=1,  # buffer by line
         )
 
-        red.set('mr_deploy_running', self.is_running())
+        self._set_running(True)
 
         threading.Thread(target=self._publish_stream).start()
         threading.Thread(target=self._log_to_file).start()
@@ -57,7 +64,7 @@ class MrDeploy(object):
 
     def _update_status(self):
         self.proc.wait()
-        red.set('mr_deploy_running', False)
+        self._set_running(False)
 
     def _publish_stream(self):
         """Continuously publishes to Redis mr_deploy's output. Intended to be
@@ -70,20 +77,23 @@ class MrDeploy(object):
                 if not line:
                     break
 
-            red.publish(self.publish_channel, line)
+            red.publish(self.output_channel, line)
 
     def _log_to_file(self):
         pubsub = red.pubsub()
-        pubsub.subscribe(self.publish_channel)
+        pubsub.subscribe([self.output_channel, self.status_channel])
 
         # TODO(david): Append to file and have cron job move each day's log to
         #     its own named file to keep log from growing too large.
-        # TODO(david): Finish thread on stop for now.
         BY_LINE = 1
         with open('log/mr_deploy.log', 'w+', buffering=BY_LINE) as log_file:
             for item in pubsub.listen():
                 if item['type'] == 'message':
-                    log_file.write(item['data'])
+                    if item['channel'] == self.output_channel:
+                        log_file.write(item['data'])
+                    elif item['channel'] == self.status_channel:
+                        if json.loads(item['data']) is False:
+                            return  # Quit logging on stop for now
 
     def subscribe(self, channel):
         pubsub = red.pubsub()
@@ -104,7 +114,7 @@ class MrDeploy(object):
 
 
 def main():
-    mr_deploy = MrDeploy('mr_deploy_output')
+    mr_deploy = MrDeploy('mr_deploy_output', 'mr_deploy_status')
     mr_deploy.start()
     mr_deploy.subscribe('mr_deploy_commands')
 

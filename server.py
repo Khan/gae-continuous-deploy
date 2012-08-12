@@ -5,6 +5,7 @@ Redis through her assistant, Mr Assistant.
 """
 
 import flask
+import json
 import redis
 
 import auth
@@ -19,18 +20,22 @@ red = redis.StrictRedis()
 
 def event_stream():
     pubsub = red.pubsub()
-    pubsub.subscribe('mr_deploy_output')
+    pubsub.subscribe(['mr_deploy_output', 'mr_deploy_status'])
     for item in pubsub.listen():
         if item['type'] == 'message':
-            yield 'data: %s\n\n' % item['data']
+            # This is the format for an SSE specifying an event name with data
+            # See http://www.html5rocks.com/en/tutorials/eventsource/basics/
+            yield 'event: %s\ndata: %s\n\n' % (item['channel'], item['data'])
 
 
 @app.route('/deploy/status', methods=['GET'])
 @auth.login_required
 def status():
     # TODO(david): Should return false if mr_assistant.py is not working.
+    running = red.get('mr_deploy_running')
+    running = running and json.loads(running)
     return flask.jsonify(
-        running=red.get('mr_deploy_running') == 'True',
+        running=running,
     )
 
 
