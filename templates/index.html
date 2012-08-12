@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <title>Mr Deploy's Homely Abode</title>
+
+    <link href="/static/css/third_party/bootstrap.css" rel="stylesheet">
+    <link href='http://fonts.googleapis.com/css?family=Source+Sans+Pro:300,400,700' rel='stylesheet' type='text/css'>
+
+    <link href="/static/css/style.css" rel="stylesheet">
+
+    <link rel="shortcut icon" href="http://www.khanacademy.org/favicon.ico?leaf">
+</head>
+
+<body>
+
+<div class="container">
+
+    <div class="hero-unit alert-success" id="status">
+        <p>Mr Deploy says...</p>
+        <h1 class="status-msg">I'm loading...</h1>
+    </div>
+
+    <div class="row">
+        <div class="span12">
+            <h2>Make me do something?</h2>
+            <div class="control-group">
+                <div class="controls">
+                    <div id="buttons" class="btn-group">
+                        <button data-action="start" class="btn">
+                            <i class="icon-play"></i> Wake up!
+                        </button>
+                        <button data-action="stop" class="btn">
+                            <i class="icon-stop"></i> Take a nap
+                        </button>
+                        <button data-action="restart" class="btn">
+                            <i class="icon-fast-backward"></i> Restart
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="console" class="span12">
+            <h2>Here's what I'm up to:</h2>
+
+            <pre class ="well" id="console-text">
+                {{ deploy_log }}
+            </pre>
+            <img id="mr-deploy-img"
+                src="http://www.khanacademy.org/images/avatars/mr-pink.png"
+                alt=""
+            >
+        </div>
+    </div>
+
+    <hr>
+
+    <footer>
+        <p>
+            Property of Mr Deploy's Homely Abode. Have some of my delicious
+            homemade copypasta!
+        </p>
+    </footer>
+
+</div>
+
+<!-- Third-party libraries -->
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.7.1/jquery.min.js"></script>
+
+<script src="/static/js/dashboard.js"></script>
+
+</body>
+
+</html>

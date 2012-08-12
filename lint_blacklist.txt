@@ -1,0 +1,5 @@
+# Third party code
+third_party/
+static/js/third_party/
+static/css/third_party/
+static/img/third_party/

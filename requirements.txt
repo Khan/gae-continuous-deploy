@@ -2,3 +2,12 @@ mercurial==2.2.3
 
 # Required by python-hipchat
 configobj
+
+# For web server
+Flask==0.8
+greenlet==0.4.0
+gunicorn==0.14.6
+gevent==0.13.7
+redis==2.6.0
+oauth2==1.5.211
+httplib2==0.7.4

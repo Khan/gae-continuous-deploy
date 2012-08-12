@@ -1,8 +1,7 @@
 #!/bin/sh
 
-# Runs deploy.py as a daemon.
+# Runs Mr Deploy and friends (her assistant and their web server) as a daemon.
+# This should not be run directly, and should be
+# TODO(david): replaced with a proper daemon script placed in init.d.
 
-# TODO(david): Actually run as a daemon, this is quick'n'dirty nohup right now.
-
-ln -sfnv "$(pwd)/deploy.log" $HOME
-nohup python -u deploy.py > deploy.log &
+nohup ./prod_server.sh &

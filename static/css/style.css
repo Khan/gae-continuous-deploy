@@ -1,0 +1,34 @@
+.hero-unit.alert-success {
+    background-color: #dff0d8;
+}
+
+.hero-unit.alert-error {
+    background-color: #f2dede;
+}
+
+.form-horizontal .controls {
+    margin-left: 0px;
+}
+
+#console {
+    position: relative;
+}
+
+#console-text {
+    height: 400px;
+    overflow: auto;
+    background-color: rgba(245, 245, 245, 0.8);
+}
+
+#mr-deploy-img {
+    position: absolute;
+    bottom: 50px;
+    right: 50px;
+    z-index: -1;
+}
+
+footer {
+    color: #777;
+    font-weight: 300;
+    word-spacing: 1px;
+}

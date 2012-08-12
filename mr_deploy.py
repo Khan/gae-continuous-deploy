@@ -4,13 +4,16 @@
 a changeset is pushed to the website stable repository.
 """
 
-# TODO(david): Integrate with Jenkins: only deploy when all tests pass
+# TODO(david): Integrate with Jenkins: only deploy when all tests pass, or just
+#     run make allcheck
 # TODO(david): Proper logging with timestamps.
 
 import optparse
 import os
+import signal
 import shutil
 import subprocess
+import sys
 import time
 
 import hipchat.config
@@ -21,7 +24,7 @@ import secrets
 hipchat.config.token = secrets.hipchat_token
 
 
-POLL_INVERVAL_SECS = 20
+POLL_INVERVAL_SECS = 15
 REPO_NAME = "stable"
 REPO_DIR = os.path.join(os.path.dirname(__file__), REPO_NAME)
 CLONE_URL = "https://khanacademy.kilnhg.com/Code/Website/Group/%s" % REPO_NAME
@@ -150,43 +153,52 @@ def check_dangerous_files(first_changeset, last_changeset='tip', notify=True):
         if notify:
             notify_hipchat(secrets.hipchat_room_id, "red", "(boom) Sorry "
                     "y'all, but I'm cowardly refusing to deploy because of "
-                    "potentially dangerous cross-version changes to %s. Call "
-                    "me back when the coast is clear!" % changes_str)
+                    "potentially dangerous cross-version changes to %s. Drop "
+                    "by my shack at ci.khanacademy.org when ready!"
+                    % changes_str)
             notify_abort(secrets.hipchat_room_id)
         return True
 
     return False
 
 
-def deploy_to_staging(notify=True):
-    if check_incoming():
-        first_changeset = get_earliest_incoming()
-        update_repo()
+def deploy_to_staging(notify=True, force=False):
+    """Deploys stable to a staging version if there are incoming changes.
 
-        if check_dangerous_files(first_changeset, notify=notify):
-            exit(1)
-
-    decrypt_secrets()
-    shutil.copy2("secrets_dev.py", REPO_DIR)
-    # TODO(david): sudo needed because not using virtualenv on EC2. Fix that.
-    subprocess.check_call(["sudo", "make", "install_deps"], cwd=REPO_DIR)
-
-    print "Deploying!"
-
+    notify - Whether to ping 1s and 0s room about success or failure.
+    force - Whether to deploy even if there are no incoming changes.
+    """
     try:
+
+        if check_incoming():
+            first_changeset = get_earliest_incoming()
+            update_repo()
+
+            if check_dangerous_files(first_changeset, notify=notify):
+                sys.exit(1)
+
+        elif not force:
+            return
+
+        decrypt_secrets()
+        shutil.copy2("secrets_dev.py", REPO_DIR)
+        # TODO(david): sudo needed because not using virtualenv on EC2. Fix it.
+        subprocess.check_call(["sudo", "make", "install_deps"], cwd=REPO_DIR)
+
+        print "Running deploy script!"
 
         last_changeset = get_last_changeset()
         last_author = get_last_author()
 
         subprocess.check_call([
-            "python", "deploy/deploy.py",
+            "python", "-u", "deploy/deploy.py",
             "--version", "staging",
             "--no-up",
             "--no-hipchat",
             "--no-browser",
         ], cwd=REPO_DIR)
 
-        print "Deploy succeeded!"
+        print "Deploy script succeeded!"
 
         if notify:
             notify_hipchat(secrets.hipchat_room_id, "gray", "/me just "
@@ -201,15 +213,20 @@ def deploy_to_staging(notify=True):
 
         if notify:
             # TODO(david): Give more info in hipchat message, like ping
-            #     changeset authors
+            #     changeset authors and tail deploy.log
             notify_hipchat(secrets.hipchat_room_id, "red",
-                    "Oh (poo), I'm borked (sadpanda). Will a kind soul ssh "
-                    "into ci.khanacademy.org and make me feel better? (heart)")
+                    "Oh (poo), I'm borked (sadpanda). Will a kind soul visit "
+                    "ci.khanacademy.org and make me feel better? (heart)")
             notify_abort(secrets.hipchat_room_id)
 
         # Exit for now so we don't spam the 1s and 0s room
-        print "Quitting. Please restart this script once issue has been fixed."
-        exit(1)
+        print "Napping. Please wake me up once this issue has been fixed! :)"
+        sys.exit(1)
+
+
+def manual_exit():
+    print "Affirmative! I'll take a nap now, commander."
+    sys.exit(0)
 
 
 def get_cmd_line_args():
@@ -234,16 +251,23 @@ def main():
         clone_repo()
 
     if options.deploy_and_quit:
-        deploy_to_staging(not options.no_notify)
+        deploy_to_staging(not options.no_notify, force=True)
         return 0
 
+    # Register a cleanup handler on script termination
+    for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGABRT):
+        signal.signal(sig, lambda signal, frame: manual_exit())
+
+    print "I'm awake! Back to work. :)"
+
     # Poll to see if there are any new changesets
+    # TODO(david): Should deploy any undeployed changes pulled from before (eg.
+    #     when restarting from error).
     while True:
-        if check_incoming():
-            deploy_to_staging(not options.no_notify)
+        deploy_to_staging(not options.no_notify)
 
         time.sleep(POLL_INVERVAL_SECS)
 
 
 if __name__ == "__main__":
-    exit(main())
+    sys.exit(main())
