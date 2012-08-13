@@ -47,8 +47,9 @@ var setupStream = function() {
     // some unfathomable reason we want to support IE (Bill Gates comes again?)
     var source = new EventSource('/deploy/stream');
     source.addEventListener('mr_deploy_output', function(event) {
+        var line = $("<div>").text(event.data).html();
         $("#console-text")
-            .append(event.data + "\n")
+            .append(line + "\n")
             .scrollTop($("#console-text")[0].scrollHeight);
     });
     source.addEventListener('mr_deploy_status', function(event) {
