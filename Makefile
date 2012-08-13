@@ -2,7 +2,7 @@ local-server:
 	./local_server.sh
 
 deploy:
-	@if [ `whoami` == 'ci' ]; then \
+	@if [ `whoami` = 'ci' ]; then \
 		./update_and_restart.sh; \
 	else \
 		cat update_and_restart.sh | ssh ka-ci sh; \
