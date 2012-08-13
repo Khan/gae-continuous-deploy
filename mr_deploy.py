@@ -225,7 +225,7 @@ def deploy_to_staging(notify=True, force=False):
 
 
 def manual_exit():
-    print "Affirmative! I'll take a nap now, commander."
+    print "Affirmative! I'll take a nap now, commander.\n"
     sys.exit(0)
 
 

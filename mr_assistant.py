@@ -74,10 +74,11 @@ class MrDeploy(object):
             line = ""
             for data in self.proc.stdout.readline():
                 line += data
-                if not line:
+                if not data:
                     break
 
-            red.publish(self.output_channel, line)
+            if line:
+                red.publish(self.output_channel, line)
 
     def _log_to_file(self):
         pubsub = red.pubsub()
