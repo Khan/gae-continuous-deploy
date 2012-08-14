@@ -56,10 +56,17 @@ var setupStream = function(retries) {
     var source = new EventSource('/deploy/stream');
 
     source.addEventListener('mr_deploy_output', function(event) {
-        var line = $("<div>").text(event.data).html();
-        $("#console-text")
-            .append(line + "\n")
-            .scrollTop($("#console-text")[0].scrollHeight);
+        var line = $("<div>").text(event.data).html(),
+            $consoleText = $("#console-text"),
+            oldScrollHeight = $consoleText[0].scrollHeight;
+
+        $consoleText.append(line + "\n");
+
+        // Scroll to the bottom only if we're already scrolled down
+        var scrollBottom = $consoleText.scrollTop() + $consoleText.height();
+        if (Math.abs(scrollBottom - oldScrollHeight) < 100) {
+            $consoleText.scrollTop($consoleText[0].scrollHeight);
+        }
     });
 
     source.addEventListener('mr_deploy_status', function(event) {
