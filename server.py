@@ -60,7 +60,7 @@ def stream():
 def index():
     log_lines = open('log/mr_deploy.log', 'r').readlines()
     deploy_log = ''.join(log_lines[-9999:])
-    return flask.render_template('index.html', deploy_log=deploy_log)
+    return flask.render_template('index.html', deploy_log=unicode(deploy_log))
 
 
 def main():
