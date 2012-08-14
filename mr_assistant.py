@@ -25,6 +25,8 @@ class MrDeploy(object):
         self.output_channel = output_channel
         self.status_channel = status_channel
 
+        threading.Thread(target=self._log_to_file).start()
+
     def is_running(self):
         return self.proc and self.proc.poll() is None
 
@@ -49,7 +51,6 @@ class MrDeploy(object):
         self._set_running(True)
 
         threading.Thread(target=self._publish_stream).start()
-        threading.Thread(target=self._log_to_file).start()
         threading.Thread(target=self._update_status).start()
 
     def stop(self):
@@ -82,19 +83,13 @@ class MrDeploy(object):
 
     def _log_to_file(self):
         pubsub = red.pubsub()
-        pubsub.subscribe([self.output_channel, self.status_channel])
+        pubsub.subscribe(self.output_channel)
 
-        # TODO(david): Append to file and have cron job move each day's log to
-        #     its own named file to keep log from growing too large.
         BY_LINE = 1
-        with open('log/mr_deploy.log', 'w+', buffering=BY_LINE) as log_file:
+        with open('log/mr_deploy.log', 'a+', buffering=BY_LINE) as log_file:
             for item in pubsub.listen():
                 if item['type'] == 'message':
-                    if item['channel'] == self.output_channel:
-                        log_file.write(item['data'])
-                    elif item['channel'] == self.status_channel:
-                        if json.loads(item['data']) is False:
-                            return  # Quit logging on stop for now
+                    log_file.write(item['data'])
 
     def subscribe(self, channel):
         pubsub = red.pubsub()
