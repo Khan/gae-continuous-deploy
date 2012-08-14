@@ -1,6 +1,6 @@
 $(function() {
 
-var MAX_SSE_RETRIES = 3;
+var RETRY_TIMEOUT_MS = 30 * 1000;
 
 $.fn.toggleDisabled = function(disable) {
     return this.each(function() {
@@ -46,10 +46,8 @@ var pollStatus = function() {
 
 /**
  * Set up an SSE stream to get deploy output and status "pushed" from server.
- * @param {number=} retries Optional. Number of times we've retried connecting
- *     to the event stream.
  */
-var setupStream = function(retries) {
+var setupStream = function() {
 
     // IE does not support Server-Sent Events, but there exist polyfills if for
     // some unfathomable reason we want to support IE (Bill Gates comes again?)
@@ -78,14 +76,13 @@ var setupStream = function(retries) {
             console.log('Error in SSE stream:', event);
         }
 
-        // Try to re-establish the connection a few times, but give up and
-        // reload page after we've had enough
-        retries = _.isNumber(retries) ? retries : 0;
-        if (retries > MAX_SSE_RETRIES) {
-            window.location.reload();
-        } else {
-            window.setTimeout(_.bind(setupStream, null, retries + 1), 3000);
-        }
+        // The browser will automatically attempt to reconnect on error, but if
+        // it's not successful after some time, just reload the page.
+        window.setTimeout(function() {
+            if (source.readyState !== EventSource.OPEN) {
+                window.location.reload();
+            }
+        }, RETRY_TIMEOUT_MS);
     });
 
 };
