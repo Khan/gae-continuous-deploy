@@ -4,6 +4,7 @@
 Redis through her assistant, Mr Assistant.
 """
 
+import codecs
 import flask
 import json
 import redis
@@ -58,9 +59,9 @@ def stream():
 @app.route('/')
 @auth.login_required
 def index():
-    log_lines = open('log/mr_deploy.log', 'r').readlines()
+    log_lines = codecs.open('log/mr_deploy.log', 'r', 'utf-8').readlines()
     deploy_log = ''.join(log_lines[-9999:])
-    return flask.render_template('index.html', deploy_log=unicode(deploy_log))
+    return flask.render_template('index.html', deploy_log=deploy_log)
 
 
 def main():
