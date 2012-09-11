@@ -75,6 +75,7 @@ def login():
 def authorized(resp):
     access_token = resp['access_token']
     flask.session['access_token'] = access_token, ''
+    flask.session.permanent = True
     return flask.redirect(flask.request.args.get('continue', '/'))
 
 
