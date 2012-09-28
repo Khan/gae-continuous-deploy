@@ -29,6 +29,25 @@ REPO_NAME = "stable"
 REPO_DIR = os.path.join(os.path.dirname(__file__), REPO_NAME)
 CLONE_URL = "https://khanacademy.kilnhg.com/Code/Website/Group/%s" % REPO_NAME
 
+last_version_attempted = None
+
+
+def get_last_deployed():
+    """Return the last deployed staging version, as stored in
+    staging.version.txt. If the file is missing, return None.
+    """
+    if not os.path.isfile('staging.version.txt'):
+        return None
+
+    with open('staging.version.txt', 'r') as f:
+        return f.read()
+
+
+def set_last_deployed(changeset):
+    """Set the last deployed staging version in staging.version.txt."""
+    with open('staging.version.txt', 'w') as f:
+        f.write(changeset)
+
 
 def check_incoming():
     # TODO(david): Suppress output?
@@ -168,7 +187,10 @@ def deploy_to_staging(notify=True, force=False):
     notify - Whether to ping 1s and 0s room about success or failure.
     force - Whether to deploy even if there are no incoming changes.
     """
+    global last_version_attempted
+
     try:
+        last_changeset = get_last_changeset()
 
         if check_incoming():
             first_changeset = get_earliest_incoming()
@@ -177,7 +199,14 @@ def deploy_to_staging(notify=True, force=False):
             if check_dangerous_files(first_changeset, notify=notify):
                 sys.exit(1)
 
-        elif not force:
+        elif last_changeset == get_last_deployed():
+            # staging is already up to date, probably don't want to deploy
+            if not force:
+                return
+
+        elif last_changeset == last_version_attempted:
+            # We failed last time on this version, don't try again (unless this
+            # script is restarted entirely)
             return
 
         decrypt_secrets()
@@ -190,6 +219,8 @@ def deploy_to_staging(notify=True, force=False):
         last_changeset = get_last_changeset()
         last_author = get_last_author()
 
+        last_version_attempted = last_changeset
+
         subprocess.check_call([
             "python", "-u", "deploy/deploy.py",
             "--version", "staging",
@@ -197,6 +228,8 @@ def deploy_to_staging(notify=True, force=False):
             "--no-hipchat",
             "--no-browser",
         ], cwd=REPO_DIR)
+
+        set_last_deployed(last_changeset)
 
         print "Deploy script succeeded!"
 
@@ -207,7 +240,6 @@ def deploy_to_staging(notify=True, force=False):
                         last_changeset, last_author))
 
     except subprocess.CalledProcessError as e:
-
         print "Deploy failed :("
         print "ERROR: %s" % e
 
@@ -217,11 +249,6 @@ def deploy_to_staging(notify=True, force=False):
             notify_hipchat(secrets.hipchat_room_id, "red",
                     "Oh (poo), I'm borked (sadpanda). Will a kind soul visit "
                     "ci.khanacademy.org and make me feel better? (heart)")
-            notify_abort(secrets.hipchat_room_id)
-
-        # Exit for now so we don't spam the 1s and 0s room
-        print "Napping. Please wake me up once this issue has been fixed! :)"
-        sys.exit(1)
 
 
 def manual_exit():

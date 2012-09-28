@@ -4,3 +4,4 @@ secrets_dev.py
 /stable
 deploy.log
 dump.rdb
+staging.version.txt
