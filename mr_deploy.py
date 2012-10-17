@@ -160,7 +160,7 @@ def notify_abort(room_id):
 
 
 def check_dangerous_files(first_changeset, last_changeset='tip', notify=True):
-    dangerous_files = {"cron.yaml", "queue.yaml", "index.yaml"}
+    dangerous_files = {"index.yaml"}
     affected_files = get_affected_files(first_changeset, last_changeset)
     dangerous_changes = dangerous_files & affected_files
 
