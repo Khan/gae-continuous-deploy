@@ -4,10 +4,10 @@
 Redis through her assistant, Mr Assistant.
 """
 
-import codecs
 import flask
 import json
 import redis
+import subprocess
 
 import auth
 
@@ -56,12 +56,16 @@ def stream():
     return flask.Response(event_stream(), mimetype="text/event-stream")
 
 
+def tail(filename, num_lines):
+    return subprocess.check_output(['tail', '-n', str(num_lines), filename])
+
+
 @app.route('/')
 @auth.login_required
 def index():
-    log_lines = codecs.open('log/mr_deploy.log', 'r', 'utf-8').readlines()
-    deploy_log = ''.join(log_lines[-9999:])
-    return flask.render_template('index.html', deploy_log=deploy_log)
+    deploy_log = tail('log/mr_deploy.log', num_lines=12345)
+    deploy_log_decoded = unicode(deploy_log, 'utf8')
+    return flask.render_template('index.html', deploy_log=deploy_log_decoded)
 
 
 def main():
