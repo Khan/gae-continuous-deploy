@@ -96,8 +96,9 @@ var init = function() {
     });
 
     // TODO(david): On resize as well
+    // TODO(david): Preferably do this in CSS and not hardcode height
     $("#console-text")
-        .css("height", $(window).height() - 520)
+        .css("height", $(window).height() - 340)
         .scrollTop($("#console-text")[0].scrollHeight);
 
     pollStatus();

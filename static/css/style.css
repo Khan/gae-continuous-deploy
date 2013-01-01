@@ -1,3 +1,10 @@
+.hero-unit {
+    padding-top: 30px;
+    padding-bottom: 30px;
+    border-radius: 0 0 6px 6px;
+    text-align: center;
+}
+
 .hero-unit.alert-success {
     background-color: #dff0d8;
 }
