@@ -35,6 +35,7 @@ except ImportError:
 
 REDIRECT_URI = '/oauth2callback'
 
+auth_required = True
 oauth = OAuth()
 google = oauth.remote_app(
         'google',
@@ -64,6 +65,9 @@ def configure_app(app, required=True):
     app.add_url_rule('/login', 'login', login)
     app.add_url_rule(REDIRECT_URI, 'authorized', authorized)
 
+    global auth_required
+    auth_required = required
+
 
 def login():
     # TODO(benkomalo): pass along continue url.
@@ -87,7 +91,7 @@ def get_access_token():
 def login_required(func):
     @wraps(func)
     def auth_wrapper(*args, **kwargs):
-        if FAKED_SECRETS:
+        if FAKED_SECRETS or not auth_required:
             return func(*args, **kwargs)
 
         # TODO(benkomalo): pass along continue url.
