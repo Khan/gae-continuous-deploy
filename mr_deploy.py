@@ -49,9 +49,15 @@ def set_last_deployed(changeset):
         f.write(changeset)
 
 
-def check_incoming():
-    # TODO(david): Suppress output?
-    return subprocess.call(["hg", "incoming"], cwd=REPO_DIR) == 0
+def get_incoming_changes():
+    """Returns a string of incoming changesets, or None if no new changes."""
+    try:
+        return subprocess.check_output(["hg", "incoming"], cwd=REPO_DIR)
+    except subprocess.CalledProcessError as e:
+        # `hg incoming` will return 1 if there are no incoming changes
+        if e.returncode != 1:
+            raise e
+        return None
 
 
 def get_earliest_incoming():
@@ -192,7 +198,9 @@ def deploy_to_staging(notify=True, force=False):
     try:
         last_changeset = get_last_changeset()
 
-        if check_incoming():
+        incoming_changes = get_incoming_changes()
+        if incoming_changes:
+            print incoming_changes
             first_changeset = get_earliest_incoming()
             update_repo()
 
@@ -288,8 +296,6 @@ def main():
     print "I'm awake! Back to work. :)"
 
     # Poll to see if there are any new changesets
-    # TODO(david): Should deploy any undeployed changes pulled from before (eg.
-    #     when restarting from error).
     while True:
         deploy_to_staging(not options.no_notify)
 
