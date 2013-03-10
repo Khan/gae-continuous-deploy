@@ -161,7 +161,7 @@ def notify_hipchat(room_id, color, message):
 
 
 def notify_abort(room_id):
-    notify_hipchat(room_id, "gray", "/me is taking a "
+    notify_hipchat(room_id, "gray", "is taking a "
             "nap until the devs sort things out. (zzz)")
 
 
@@ -242,7 +242,7 @@ def deploy_to_staging(notify=True, force=False):
         print "Deploy script succeeded!"
 
         if notify:
-            notify_hipchat(secrets.hipchat_room_id, "gray", "/me just "
+            notify_hipchat(secrets.hipchat_room_id, "gray", "just "
                     "deployed to http://staging.khan-academy.appspot.com with "
                     "last website changeset %s by %s" % (
                         last_changeset, last_author))
