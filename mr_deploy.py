@@ -25,7 +25,7 @@ hipchat.config.token = secrets.hipchat_token
 
 
 POLL_INVERVAL_SECS = 15
-REPO_NAME = "stable"
+REPO_NAME = "webapp"
 REPO_DIR = os.path.join(os.path.dirname(__file__), REPO_NAME)
 CLONE_URL = "https://khanacademy.kilnhg.com/Code/Website/Group/%s" % REPO_NAME
 
@@ -105,6 +105,7 @@ def clone_repo():
     print "Cloning %s" % CLONE_URL
     # TODO(david): Clone only latest revision to be faster?
     subprocess.check_call(["hg", "clone", CLONE_URL])
+    subprocess.check_call(["hg", "update", "master"], cwd=REPO_DIR)
 
 
 def update_repo():
@@ -112,10 +113,9 @@ def update_repo():
     print "Updating %s" % REPO_DIR
     try:
         subprocess.check_call(["hg", "pull"], cwd=REPO_DIR)
-        # Not doing hg pull -u because that returns 0 for some failed updates
-        subprocess.check_call(["hg", "update"], cwd=REPO_DIR)
+        subprocess.check_call(["hg", "update", "master"], cwd=REPO_DIR)
     except subprocess.CalledProcessError as e:
-        print "hg pull && hg up failed: %s" % e
+        print "hg pull && hg up master failed: %s" % e
         print "Removing %s and re-cloning" % REPO_DIR
 
         # TODO(david): Try pulling subrepos before falling back to clone.
@@ -124,20 +124,20 @@ def update_repo():
 
 
 def get_last_changeset():
-    return subprocess.check_output(["hg", "tip", "--template", "{node|short}"],
-            cwd=REPO_DIR)
+    return subprocess.check_output(["hg", "log", "-r", "master", "--template",
+            "{node|short}"], cwd=REPO_DIR)
 
 
 def get_last_author():
     # Not notifying authors for now because it may be annoying. If people
     # request for @mentions, will add that then.
     return subprocess.check_output([
-        "hg", "tip",
+        "hg", "log", "-r", "master",
         "--template", "{author|person}",
     ], cwd=REPO_DIR)
 
 
-def get_affected_files(first_changeset, last_changeset='tip'):
+def get_affected_files(first_changeset, last_changeset='master'):
     """Get all changed, added, or deleted files between two given changesets,
     inclusive.
     """
@@ -165,7 +165,8 @@ def notify_abort(room_id):
             "nap until the devs sort things out. (zzz)")
 
 
-def check_dangerous_files(first_changeset, last_changeset='tip', notify=True):
+def check_dangerous_files(first_changeset, last_changeset='master',
+                          notify=True):
     dangerous_files = {"index.yaml"}
     affected_files = get_affected_files(first_changeset, last_changeset)
     dangerous_changes = dangerous_files & affected_files
