@@ -29,7 +29,13 @@ REPO_NAME = "webapp"
 REPO_DIR = os.path.join(os.path.dirname(__file__), REPO_NAME)
 CLONE_URL = "https://khanacademy.kilnhg.com/Code/Website/Group/%s" % REPO_NAME
 
+# The number of Kiln errors we must see before reporting them
+KILN_ERROR_THRESHOLD = 25
+
 last_version_attempted = None
+
+# Keeps track of how frequently we see errors when talking to Kiln
+count_of_kiln_errors = 0
 
 
 def get_last_deployed():
@@ -51,13 +57,28 @@ def set_last_deployed(changeset):
 
 def get_incoming_changes():
     """Returns a string of incoming changesets, or None if no new changes."""
+    global count_of_kiln_errors
+
     try:
-        return subprocess.check_output(["hg", "incoming"], cwd=REPO_DIR)
+        result = subprocess.check_output(["hg", "incoming"], cwd=REPO_DIR)
+        count_of_kiln_errors = 0
+        return result
     except subprocess.CalledProcessError as e:
-        # `hg incoming` will return 1 if there are no incoming changes
-        if e.returncode != 1:
-            raise e
-        return None
+        # `hg incoming` will return
+        #   1 if there are no incoming changes, which we ignore
+        #   255 if Kiln is currently down, which we only report over threshold
+        if e.returncode == 1:
+            return None
+
+        if e.returncode == 255:
+            if count_of_kiln_errors < KILN_ERROR_THRESHOLD:
+                count_of_kiln_errors += 1
+                return None
+            else:
+                # Restart the count so we report every threshold-crossing
+                count_of_kiln_errors = 0
+
+        raise e
 
 
 def get_earliest_incoming():
