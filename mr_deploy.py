@@ -218,8 +218,6 @@ def deploy_to_staging(notify=True, force=False):
     global last_version_attempted
 
     try:
-        last_changeset = get_last_changeset()
-
         incoming_changes = get_incoming_changes()
         if incoming_changes:
             print incoming_changes
@@ -229,7 +227,10 @@ def deploy_to_staging(notify=True, force=False):
             if check_dangerous_files(first_changeset, notify=notify):
                 sys.exit(1)
 
-        elif last_changeset == get_last_deployed():
+        last_changeset = get_last_changeset()
+        last_author = get_last_author()
+
+        if last_changeset == get_last_deployed():
             # staging is already up to date, probably don't want to deploy
             if not force:
                 return
@@ -245,9 +246,6 @@ def deploy_to_staging(notify=True, force=False):
         subprocess.check_call(["sudo", "make", "install_deps"], cwd=REPO_DIR)
 
         print "Running deploy script!"
-
-        last_changeset = get_last_changeset()
-        last_author = get_last_author()
 
         last_version_attempted = last_changeset
 
